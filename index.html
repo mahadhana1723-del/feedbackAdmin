@@ -3,24 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feedback Admin</title>
+    <title>Feedback Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; background-color: #f3f4f6; }
+    </style>
 </head>
-<body class="bg-gray-100 p-6">
+<body class="p-6">
 
-    <div class="max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">📋 Received Feedbacks</h1>
-        
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+                <p class="text-gray-500 text-sm">Manage player feedbacks & ratings</p>
+            </div>
+            <div class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow">
+                <i class="fa-solid fa-user-shield mr-2"></i> Admin Mode
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-400 flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm font-semibold uppercase">Overall Rating</p>
+                    <h2 class="text-4xl font-bold text-gray-800 flex items-center">
+                        <span id="avgRating">0.0</span>
+                        <i class="fa-solid fa-star text-yellow-400 text-2xl ml-2"></i>
+                    </h2>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded-full text-yellow-600">
+                    <i class="fa-solid fa-chart-line text-2xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500 flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm font-semibold uppercase">Total Feedbacks</p>
+                    <h2 class="text-4xl font-bold text-gray-800" id="totalCount">0</h2>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600">
+                    <i class="fa-solid fa-comments text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Recent Messages</h3>
+
         <div id="feedbackList" class="space-y-4">
-            <p class="text-gray-500 text-center">Loading messages...</p>
+            <p class="text-center text-gray-500 py-10">Loading data...</p>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // 🔥 మీ వివరాలతో అప్డేట్ చేయబడిన Config
+        // 🔥 మీ Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCpEMtX1eP7YwZDH0qLBRGci6VkhBgcJVo",
             authDomain: "feedback-4ace7.firebaseapp.com",
@@ -34,32 +74,100 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Fetch Data Realtime
         const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
 
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('feedbackList');
+            const avgDisplay = document.getElementById('avgRating');
+            const countDisplay = document.getElementById('totalCount');
+            
             list.innerHTML = ""; 
 
             if(snapshot.empty) {
-                list.innerHTML = "<p class='text-gray-500 text-center'>No messages yet.</p>";
+                list.innerHTML = `
+                    <div class="text-center py-10 bg-white rounded-lg shadow">
+                        <i class="fa-solid fa-inbox text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500">No feedbacks received yet.</p>
+                    </div>`;
+                avgDisplay.innerText = "0.0";
+                countDisplay.innerText = "0";
+                return;
             }
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                let dateStr = "Just now";
-                if(data.date) {
-                    dateStr = new Date(data.date.seconds * 1000).toLocaleString();
+            let totalStars = 0;
+            let ratedCount = 0;
+
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const id = docSnap.id; // Document ID required for deletion
+
+                // Calculate Stats
+                if(data.rating) {
+                    totalStars += data.rating;
+                    ratedCount++;
                 }
 
+                // Date Formatting
+                let dateStr = "Just now";
+                if(data.date) {
+                    dateStr = new Date(data.date.seconds * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+                }
+
+                // Star HTML Generator
+                let starHtml = '';
+                const rating = data.rating || 0;
+                for(let i=1; i<=5; i++) {
+                    if(i <= rating) starHtml += `<i class="fa-solid fa-star text-yellow-400"></i>`;
+                    else starHtml += `<i class="fa-regular fa-star text-gray-300"></i>`;
+                }
+
+                const messageContent = data.message ? `<p class="text-gray-700 mt-2 text-lg bg-gray-50 p-3 rounded-md border border-gray-100">"${data.message}"</p>` : `<p class="text-gray-400 italic mt-2">No written message</p>`;
+
                 const card = `
-                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-                        <p class="text-gray-800 text-lg">${data.message}</p>
-                        <p class="text-gray-400 text-xs mt-2 text-right">${dateStr}</p>
+                    <div class="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition border border-gray-100 relative group">
+                        
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <div class="flex text-sm">${starHtml}</div>
+                                    <span class="text-xs font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">${rating}.0</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mb-2"><i class="fa-regular fa-clock mr-1"></i> ${dateStr}</p>
+                            </div>
+                            
+                            <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition" title="Delete Feedback">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+
+                        ${messageContent}
                     </div>
                 `;
                 list.innerHTML += card;
             });
+
+            // Update Header Stats
+            countDisplay.innerText = snapshot.size;
+            if(ratedCount > 0) {
+                avgDisplay.innerText = (totalStars / ratedCount).toFixed(1);
+            } else {
+                avgDisplay.innerText = "0.0";
+            }
         });
+
+        // Delete Function (Attached to Window to work in HTML string)
+        window.deleteFeedback = async (id) => {
+            if(confirm("Are you sure you want to delete this feedback?")) {
+                try {
+                    await deleteDoc(doc(db, "feedbacks", id));
+                    // No need to reload, onSnapshot updates automatically!
+                } catch(e) {
+                    console.error("Error deleting:", e);
+                    alert("Failed to delete.");
+                }
+            }
+        }
     </script>
 </body>
 </html>
