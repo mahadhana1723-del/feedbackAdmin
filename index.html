@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">📋 Received Feedbacks</h1>
+        
+        <div id="feedbackList" class="space-y-4">
+            <p class="text-gray-500 text-center">Loading messages...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        // 🔥 సేమ్ Firebase Config ఇక్కడ కూడా paste చేయాలి
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
+
+        // Real-time listener (ఎవరైనా మెసేజ్ పంపగానే ఆటోమేటిక్ గా ఇక్కడ వస్తుంది)
+        onSnapshot(q, (snapshot) => {
+            const list = document.getElementById('feedbackList');
+            list.innerHTML = ""; // Clear list
+
+            if(snapshot.empty) {
+                list.innerHTML = "<p class='text-gray-500 text-center'>No messages yet.</p>";
+            }
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Convert timestamp to date string
+                let dateStr = "Just now";
+                if(data.date) {
+                    dateStr = new Date(data.date.seconds * 1000).toLocaleString();
+                }
+
+                const card = `
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                        <p class="text-gray-800 text-lg">${data.message}</p>
+                        <p class="text-gray-400 text-xs mt-2 text-right">${dateStr}</p>
+                    </div>
+                `;
+                list.innerHTML += card;
+            });
+        });
+    </script>
+</body>
+</html>
