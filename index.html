@@ -20,14 +20,15 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // 🔥 సేమ్ Firebase Config ఇక్కడ కూడా paste చేయాలి
+        // 🔥 మీ వివరాలతో అప్డేట్ చేయబడిన Config
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY_HERE",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "SENDER_ID",
-            appId: "APP_ID"
+            apiKey: "AIzaSyCpEMtX1eP7YwZDH0qLBRGci6VkhBgcJVo",
+            authDomain: "feedback-4ace7.firebaseapp.com",
+            projectId: "feedback-4ace7",
+            storageBucket: "feedback-4ace7.firebasestorage.app",
+            messagingSenderId: "331705524032",
+            appId: "1:331705524032:web:7e8d046e71984f74a6e4a5",
+            measurementId: "G-0WL2N0YFQ1"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -35,10 +36,9 @@
 
         const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
 
-        // Real-time listener (ఎవరైనా మెసేజ్ పంపగానే ఆటోమేటిక్ గా ఇక్కడ వస్తుంది)
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('feedbackList');
-            list.innerHTML = ""; // Clear list
+            list.innerHTML = ""; 
 
             if(snapshot.empty) {
                 list.innerHTML = "<p class='text-gray-500 text-center'>No messages yet.</p>";
@@ -46,7 +46,6 @@
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                // Convert timestamp to date string
                 let dateStr = "Just now";
                 if(data.date) {
                     dateStr = new Date(data.date.seconds * 1000).toLocaleString();
