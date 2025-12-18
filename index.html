@@ -8,46 +8,64 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; background-color: #f0f2f5; }
-        .label-text { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: #f3f4f6; 
+        }
+        .label-text { 
+            font-size: 0.7rem; 
+            color: #6b7280; 
+            text-transform: uppercase; 
+            font-weight: 700; 
+            letter-spacing: 0.5px; 
+        }
     </style>
 </head>
-<body class="p-6">
+<body class="pb-10">
 
-    <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
-                    <i class="fa-solid fa-train text-blue-600 mr-2"></i> RU DEPOT Admin Dashboard
-                </h1>
-                <p class="text-gray-500 text-sm mt-1">Monitoring Staff Feedback & Ratings</p>
-            </div>
-            
-            <div class="flex space-x-8">
-                <div class="text-right">
-                    <p class="text-xs text-gray-400 font-bold uppercase">Total Feedbacks</p>
-                    <p class="text-3xl font-bold text-blue-600" id="totalCount">0</p>
+    <div class="bg-blue-900 shadow-lg border-b-4 border-yellow-500 text-white mb-8">
+        <div class="max-w-6xl mx-auto p-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                
+                <div>
+                    <h1 class="text-3xl font-bold tracking-wide">
+                        <i class="fa-solid fa-train text-yellow-400 mr-2"></i> RU DEPOT <span class="text-gray-300 font-light">Admin</span>
+                    </h1>
+                    <p class="text-blue-200 text-sm mt-1 opacity-80">Monitoring Staff Feedback & Performance</p>
                 </div>
-                <div class="text-right border-l pl-8 border-gray-200">
-                    <p class="text-xs text-gray-400 font-bold uppercase">Overall Performance (Q9)</p>
-                    <div class="flex items-center justify-end">
-                        <span class="text-3xl font-bold text-yellow-500 mr-2" id="avgRating">0.0</span>
-                        <i class="fa-solid fa-star text-yellow-400 text-xl"></i>
+
+                <div class="flex gap-4">
+                    <div class="bg-blue-800 bg-opacity-50 p-4 rounded-xl border border-blue-700 text-center min-w-[120px]">
+                        <p class="text-xs text-blue-300 font-bold uppercase tracking-wider">Total Feedbacks</p>
+                        <p class="text-3xl font-bold text-white mt-1" id="totalCount">0</p>
+                    </div>
+                    
+                    <div class="bg-blue-800 bg-opacity-50 p-4 rounded-xl border border-blue-700 text-center min-w-[140px]">
+                        <p class="text-xs text-yellow-400 font-bold uppercase tracking-wider">Avg Performance</p>
+                        <div class="flex items-center justify-center mt-1">
+                            <span class="text-3xl font-bold text-white mr-2" id="avgRating">0.0</span>
+                            <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div id="feedbackList" class="grid grid-cols-1 gap-6">
-            <p class="text-center text-gray-500 w-full py-20">Loading data...</p>
+    <div class="max-w-6xl mx-auto px-4">
+        
+        <div id="loading" class="text-center py-20">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-600 mb-4"></i>
+            <p class="text-gray-500">Syncing with database...</p>
         </div>
+
+        <div id="feedbackList" class="grid grid-cols-1 gap-6 hidden"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // 🔥 Firebase Config (Same as before)
         const firebaseConfig = {
             apiKey: "AIzaSyCpEMtX1eP7YwZDH0qLBRGci6VkhBgcJVo",
             authDomain: "feedback-4ace7.firebaseapp.com",
@@ -61,33 +79,34 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Labels mapping (Short versions for display)
+        // Labels for Q1-Q8
         const labels = {
             q1: "Leave Handling",
             q2: "CCC Behavior",
-            q3: "Complaint Response",
+            q3: "Complaint Resp.",
             q4: "Train Planning",
             q5: "Phone Response",
             q6: "Booking Pattern",
             q7: "TPC Staff",
-            q8: "CMS Staff",
-            q9: "Overall Perf (6m)"
+            q8: "CMS Staff"
         };
 
-        // Real-time listener
         const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
 
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('feedbackList');
+            const loading = document.getElementById('loading');
             const avgDisplay = document.getElementById('avgRating');
             const countDisplay = document.getElementById('totalCount');
             
+            loading.classList.add('hidden');
+            list.classList.remove('hidden');
             list.innerHTML = ""; 
 
             if(snapshot.empty) {
                 list.innerHTML = `
-                    <div class="text-center py-20 bg-white rounded-xl shadow-sm">
-                        <i class="fa-regular fa-folder-open text-5xl text-gray-200 mb-4"></i>
+                    <div class="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-200 col-span-1">
+                        <i class="fa-regular fa-folder-open text-6xl text-gray-200 mb-4"></i>
                         <p class="text-gray-400 font-medium">No feedback received yet.</p>
                     </div>`;
                 avgDisplay.innerText = "0.0";
@@ -102,98 +121,121 @@
                 const data = docSnap.data();
                 const id = docSnap.id;
 
-                // Stats Calculation (Based on Q9)
+                // Stats Calculation
                 if(data.q9) {
                     totalQ9 += data.q9;
                     q9Count++;
                 }
 
-                // Date Format
-                let dateStr = "Just now";
+                // Date Formatting
+                let dateStr = "Unknown Date";
                 if(data.date) {
                     dateStr = new Date(data.date.seconds * 1000).toLocaleString('en-IN', { 
-                        month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
+                        month: 'short', day: 'numeric', year:'2-digit', hour: '2-digit', minute:'2-digit' 
                     });
                 }
 
-                // Determine Card Border Color (Based on Q9 rating)
-                let borderColor = "border-l-4 border-gray-300";
-                if(data.q9 >= 4) borderColor = "border-l-4 border-green-500";
-                else if(data.q9 <= 2) borderColor = "border-l-4 border-red-500";
-                else borderColor = "border-l-4 border-yellow-400";
-
-                // Generate Grid for Q1-Q9 (Stars)
-                let ratingsHtml = '';
-                for(let i=1; i<=9; i++) {
-                    const rating = data[`q${i}`] || 0;
-                    let starHtml = '';
-                    for(let s=1; s<=5; s++) {
-                        if(s <= rating) starHtml += `<i class="fa-solid fa-star text-yellow-400 text-xs"></i>`;
-                        else starHtml += `<i class="fa-solid fa-star text-gray-200 text-xs"></i>`;
+                // Generate Stars Helper
+                const getStars = (rating) => {
+                    let html = '';
+                    for(let i=1; i<=5; i++) {
+                        html += i <= rating 
+                            ? `<i class="fa-solid fa-star text-yellow-400"></i>` 
+                            : `<i class="fa-solid fa-star text-gray-200"></i>`;
                     }
+                    return html;
+                };
 
-                    ratingsHtml += `
-                        <div class="bg-gray-50 p-3 rounded-lg flex flex-col justify-center">
-                            <p class="label-text mb-1">${i}. ${labels[`q${i}`]}</p>
-                            <div class="flex space-x-0.5">${starHtml}</div>
+                // Generate Q1-Q8 Grid
+                let gridHtml = '';
+                for(let i=1; i<=8; i++) {
+                    const rating = data[`q${i}`] || 0;
+                    gridHtml += `
+                        <div class="flex justify-between items-center border-b border-gray-50 pb-1 last:border-0">
+                            <span class="text-xs font-semibold text-gray-500 w-28 truncate" title="${labels[`q${i}`]}">${labels[`q${i}`]}</span>
+                            <div class="flex text-[0.65rem] space-x-0.5">${getStars(rating)}</div>
                         </div>
                     `;
                 }
 
-                // Text Answers (Q10 & Q11)
-                const q10Text = data.q10 || "No comment";
-                const q11Text = data.q11 || "No comment";
+                // Q9 Styling (The Highlight)
+                const q9Rating = data.q9 || 0;
+                let q9ColorClass = "text-yellow-600 bg-yellow-50 border-yellow-400"; // Default Gold
+                if(q9Rating <= 2) q9ColorClass = "text-red-600 bg-red-50 border-red-300";
+                if(q9Rating >= 5) q9ColorClass = "text-green-600 bg-green-50 border-green-400";
 
                 const card = `
-                    <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition p-6 ${borderColor} relative">
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition duration-300">
                         
-                        <div class="flex justify-between items-start mb-6 border-b pb-4 border-gray-100">
-                            <div>
-                                <span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded">ID: ...${id.slice(-4)}</span>
-                                <span class="text-gray-400 text-xs ml-2"><i class="fa-regular fa-clock"></i> ${dateStr}</span>
+                        <div class="bg-gray-50 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded border border-blue-200">
+                                    #${id.slice(-4)}
+                                </span>
+                                <span class="text-xs text-gray-400 font-medium">
+                                    <i class="fa-regular fa-calendar mr-1"></i> ${dateStr}
+                                </span>
                             </div>
-                            <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 transition px-2">
-                                <i class="fa-solid fa-trash"></i>
+                            <button onclick="window.deleteFeedback('${id}')" class="text-gray-400 hover:text-red-500 transition p-1 rounded hover:bg-red-50" title="Delete">
+                                <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
 
-                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-                            ${ratingsHtml}
-                        </div>
+                        <div class="p-6">
+                            <div class="flex flex-col md:flex-row gap-6">
+                                
+                                <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                    ${gridHtml}
+                                </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                <p class="label-text text-blue-800 mb-2"><i class="fa-solid fa-comment-dots mr-1"></i> Q10. LR Suggestions</p>
-                                <p class="text-sm text-gray-700 italic">"${q10Text}"</p>
+                                <div class="w-full md:w-48 flex-shrink-0">
+                                    <div class="h-full rounded-xl border-2 ${q9ColorClass} p-4 flex flex-col items-center justify-center relative shadow-sm">
+                                        <div class="absolute -top-3 bg-white px-2 text-[0.65rem] font-bold tracking-widest uppercase text-gray-400 border rounded shadow-sm">
+                                            Overall Perf.
+                                        </div>
+                                        <span class="text-4xl font-bold mt-2">${q9Rating}<span class="text-lg text-gray-400 font-normal">/5</span></span>
+                                        <div class="flex text-sm space-x-1 mt-1 mb-1">
+                                            ${getStars(q9Rating)}
+                                        </div>
+                                        <span class="text-[0.65rem] font-semibold opacity-70 uppercase text-center">Last 6 Months</span>
+                                    </div>
+                                </div>
+
                             </div>
-                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                <p class="label-text text-purple-800 mb-2"><i class="fa-solid fa-message mr-1"></i> Q11. General Feedback</p>
-                                <p class="text-sm text-gray-700 italic">"${q11Text}"</p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
+                                
+                                <div class="bg-blue-50 rounded-lg p-3 border border-blue-100 relative group">
+                                    <span class="absolute -top-2 left-3 bg-blue-600 text-white text-[0.6rem] font-bold px-2 py-0.5 rounded">Q10. SUGGESTION</span>
+                                    <p class="text-sm text-gray-700 italic mt-2 leading-relaxed">
+                                        "${data.q10 || 'Nil'}"
+                                    </p>
+                                </div>
+
+                                <div class="bg-purple-50 rounded-lg p-3 border border-purple-100 relative group">
+                                    <span class="absolute -top-2 left-3 bg-purple-600 text-white text-[0.6rem] font-bold px-2 py-0.5 rounded">Q11. GENERAL</span>
+                                    <p class="text-sm text-gray-700 italic mt-2 leading-relaxed">
+                                        "${data.q11 || 'Nil'}"
+                                    </p>
+                                </div>
+
                             </div>
                         </div>
-
                     </div>
                 `;
                 list.innerHTML += card;
             });
 
-            // Update Header Stats
             countDisplay.innerText = snapshot.size;
-            if(q9Count > 0) {
-                avgDisplay.innerText = (totalQ9 / q9Count).toFixed(1);
-            } else {
-                avgDisplay.innerText = "0.0";
-            }
+            avgDisplay.innerText = q9Count > 0 ? (totalQ9 / q9Count).toFixed(1) : "0.0";
         });
 
-        // Delete Function
         window.deleteFeedback = async (id) => {
-            if(confirm("Are you sure you want to delete this feedback?")) {
+            if(confirm("Are you sure you want to permanently delete this record?")) {
                 try {
                     await deleteDoc(doc(db, "feedbacks", id));
                 } catch(e) {
-                    console.error("Delete Error:", e);
-                    alert("Failed to delete.");
+                    alert("Delete failed: " + e.message);
                 }
             }
         }
