@@ -40,7 +40,7 @@
                 <div class="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
                     <div>
                         <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Overall Performance (Last 6 Months)</p>
-                        <p class="text-blue-200 text-xs mt-1">Average rating from all staff</p>
+                        <p class="text-blue-200 text-xs mt-1">Average rating from all staff for Q9</p>
                     </div>
                     <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg border border-yellow-500/50">
                         <span class="text-4xl font-bold text-white" id="globalQ9">0.0</span>
@@ -55,7 +55,7 @@
     </div>
 
     <div class="max-w-5xl mx-auto px-4 mt-8">
-        <h3 class="text-gray-400 font-bold uppercase text-xs tracking-widest mb-4 ml-1">Recent Submissions</h3>
+        <h3 class="text-gray-400 font-bold uppercase text-xs tracking-widest mb-4 ml-1">Recent Submissions (Person's Avg Rating)</h3>
         
         <div id="loading" class="text-center py-10">
             <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-600 mb-2"></i>
@@ -82,7 +82,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Labels for the Top Dashboard
         const questionLabels = {
             q1: "1. Leave Handling",
             q2: "2. CCC Behavior",
@@ -114,7 +113,7 @@
                 return;
             }
 
-            // --- STATISTICS CALCULATION ---
+            // --- STATISTICS VARS ---
             let stats = {
                 q1: { sum:0, count:0 }, q2: { sum:0, count:0 }, q3: { sum:0, count:0 },
                 q4: { sum:0, count:0 }, q5: { sum:0, count:0 }, q6: { sum:0, count:0 },
@@ -133,11 +132,22 @@
                     }
                 }
 
-                // 2. Generate INDIVIDUAL CARD (Simple: Score + Text)
-                const overallScore = data.q9 || 0;
+                // 2. CALCULATE PERSON'S AVERAGE (Q1 to Q9)
+                // ఈ వ్యక్తి ఇచ్చిన అన్ని రేటింగ్స్ (Q1-Q9) కలిపి సగటు (Average) తీస్తున్నాం.
+                let personSum = 0;
+                let personCount = 0;
+                for(let i=1; i<=9; i++) {
+                    if(data[`q${i}`]) {
+                        personSum += data[`q${i}`];
+                        personCount++;
+                    }
+                }
+                const personAvg = personCount > 0 ? (personSum / personCount).toFixed(1) : "0.0";
+
+                // Color Logic based on Person's Average
                 let scoreColor = "text-blue-600 bg-blue-50 border-blue-200";
-                if(overallScore >= 4) scoreColor = "text-green-600 bg-green-50 border-green-200";
-                if(overallScore <= 2) scoreColor = "text-red-600 bg-red-50 border-red-200";
+                if(personAvg >= 4) scoreColor = "text-green-600 bg-green-50 border-green-200";
+                if(personAvg <= 2.5) scoreColor = "text-red-600 bg-red-50 border-red-200";
 
                 let dateStr = data.date ? new Date(data.date.seconds * 1000).toLocaleString('en-IN', { 
                         month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
@@ -146,30 +156,30 @@
                 const card = `
                     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition flex flex-col sm:flex-row gap-4">
                         
-                        <div class="w-full sm:w-24 flex flex-col items-center justify-center border-b sm:border-b-0 sm:border-r border-gray-100 pb-4 sm:pb-0">
-                            <span class="text-[0.6rem] text-gray-400 uppercase font-bold mb-1">Rating</span>
-                            <div class="w-12 h-12 rounded-full border-2 ${scoreColor} flex items-center justify-center bg-white">
-                                <span class="text-xl font-bold ${scoreColor.split(' ')[0]}">${overallScore}</span>
+                        <div class="w-full sm:w-28 flex flex-col items-center justify-center border-b sm:border-b-0 sm:border-r border-gray-100 pb-4 sm:pb-0">
+                            <span class="text-[0.6rem] text-gray-400 uppercase font-bold mb-1">Total Avg</span>
+                            <div class="w-14 h-14 rounded-full border-4 ${scoreColor} flex items-center justify-center bg-white shadow-sm">
+                                <span class="text-xl font-bold ${scoreColor.split(' ')[0]}">${personAvg}</span>
                             </div>
-                            <span class="text-[0.6rem] text-gray-400 mt-1">#${id.slice(-4)}</span>
+                            <span class="text-[0.6rem] text-gray-400 mt-2 font-mono">ID: ${id.slice(-4)}</span>
                         </div>
 
                         <div class="flex-1 space-y-3">
                             <div class="flex justify-between items-start">
                                 <span class="text-xs font-bold text-gray-500"><i class="fa-regular fa-clock mr-1"></i> ${dateStr}</span>
-                                <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 text-xs uppercase font-bold transition">
+                                <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 text-xs uppercase font-bold transition" title="Delete Feedback">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="bg-gray-50 p-2 rounded border border-gray-100">
-                                    <p class="text-[0.6rem] font-bold text-blue-500 uppercase">LR Suggestion</p>
-                                    <p class="text-xs text-gray-700 italic">"${data.q10 || 'Nil'}"</p>
+                                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 relative">
+                                    <div class="absolute -top-2 left-2 bg-blue-100 text-blue-600 text-[0.6rem] font-bold px-2 rounded">LR Suggestion</div>
+                                    <p class="text-xs text-gray-700 italic mt-1 leading-relaxed">"${data.q10 || 'Nil'}"</p>
                                 </div>
-                                <div class="bg-gray-50 p-2 rounded border border-gray-100">
-                                    <p class="text-[0.6rem] font-bold text-purple-500 uppercase">General</p>
-                                    <p class="text-xs text-gray-700 italic">"${data.q11 || 'Nil'}"</p>
+                                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 relative">
+                                    <div class="absolute -top-2 left-2 bg-purple-100 text-purple-600 text-[0.6rem] font-bold px-2 rounded">General</div>
+                                    <p class="text-xs text-gray-700 italic mt-1 leading-relaxed">"${data.q11 || 'Nil'}"</p>
                                 </div>
                             </div>
                         </div>
@@ -181,11 +191,9 @@
             // --- RENDER DASHBOARD AVERAGES ---
             totalCountDisplay.innerText = snapshot.size;
 
-            // Q1 to Q8 Grid
             for(let i=1; i<=8; i++) {
                 let avg = stats[`q${i}`].count > 0 ? (stats[`q${i}`].sum / stats[`q${i}`].count).toFixed(1) : "0.0";
                 
-                // Color bar width percentage
                 let percent = (avg / 5) * 100;
                 let colorClass = avg >= 4 ? "bg-green-400" : (avg <= 2.5 ? "bg-red-400" : "bg-yellow-400");
 
