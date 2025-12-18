@@ -3,42 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Railway Staff Feedback Admin</title>
+    <title>RU DEPOT Feedback Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
         body { font-family: 'Poppins', sans-serif; background-color: #f0f2f5; }
-        .answer-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; font-weight: 600; }
-        .answer-val { font-size: 0.9rem; color: #1f2937; font-weight: 500; }
+        .label-text { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
     </style>
 </head>
 <body class="p-6">
 
     <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm">
+        <div class="flex justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-train-subway text-blue-600 mr-2"></i> Staff Feedback Dashboard</h1>
-                <p class="text-gray-500 text-sm">Monitoring Incharge Performance</p>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
+                    <i class="fa-solid fa-train text-blue-600 mr-2"></i> RU DEPOT Admin Dashboard
+                </h1>
+                <p class="text-gray-500 text-sm mt-1">Monitoring Staff Feedback & Ratings</p>
             </div>
             
-            <div class="flex space-x-6">
+            <div class="flex space-x-8">
                 <div class="text-right">
-                    <p class="text-xs text-gray-400 uppercase">Total Responses</p>
-                    <p class="text-2xl font-bold text-blue-600" id="totalCount">0</p>
+                    <p class="text-xs text-gray-400 font-bold uppercase">Total Feedbacks</p>
+                    <p class="text-3xl font-bold text-blue-600" id="totalCount">0</p>
                 </div>
-                <div class="text-right border-l pl-6">
-                    <p class="text-xs text-gray-400 uppercase">Avg Rating (Q10)</p>
-                    <div class="flex items-center">
-                        <span class="text-2xl font-bold text-yellow-500 mr-1" id="avgRating">0.0</span>
-                        <i class="fa-solid fa-star text-yellow-400"></i>
+                <div class="text-right border-l pl-8 border-gray-200">
+                    <p class="text-xs text-gray-400 font-bold uppercase">Overall Performance (Q9)</p>
+                    <div class="flex items-center justify-end">
+                        <span class="text-3xl font-bold text-yellow-500 mr-2" id="avgRating">0.0</span>
+                        <i class="fa-solid fa-star text-yellow-400 text-xl"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="feedbackList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            <p class="text-center text-gray-500 w-full col-span-2 py-10">Loading data...</p>
+        <div id="feedbackList" class="grid grid-cols-1 gap-6">
+            <p class="text-center text-gray-500 w-full py-20">Loading data...</p>
         </div>
     </div>
 
@@ -60,21 +61,20 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Labels for Questions to display nicely
-        const questionLabels = {
-            q1: "Duty Roster",
-            q2: "Leave/Passes",
-            q3: "Behavior",
-            q4: "Tech Guidance",
-            q5: "Welfare Issues",
-            q6: "Availability",
-            q7: "Work Pressure",
-            q8: "Safety Rules",
-            q9: "Punctuality",
-            q10: "Overall Rating"
+        // Labels mapping (Short versions for display)
+        const labels = {
+            q1: "Leave Handling",
+            q2: "CCC Behavior",
+            q3: "Complaint Response",
+            q4: "Train Planning",
+            q5: "Phone Response",
+            q6: "Booking Pattern",
+            q7: "TPC Staff",
+            q8: "CMS Staff",
+            q9: "Overall Perf (6m)"
         };
 
-        // Real-time Data Fetching
+        // Real-time listener
         const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
 
         onSnapshot(q, (snapshot) => {
@@ -86,101 +86,114 @@
 
             if(snapshot.empty) {
                 list.innerHTML = `
-                    <div class="col-span-2 text-center py-10">
-                        <i class="fa-regular fa-folder-open text-4xl text-gray-300 mb-2"></i>
-                        <p class="text-gray-500">No feedback data found.</p>
+                    <div class="text-center py-20 bg-white rounded-xl shadow-sm">
+                        <i class="fa-regular fa-folder-open text-5xl text-gray-200 mb-4"></i>
+                        <p class="text-gray-400 font-medium">No feedback received yet.</p>
                     </div>`;
                 avgDisplay.innerText = "0.0";
                 countDisplay.innerText = "0";
                 return;
             }
 
-            let totalStars = 0;
-            let ratedCount = 0;
+            let totalQ9 = 0;
+            let q9Count = 0;
 
             snapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 const id = docSnap.id;
 
-                // Process Rating from Q10 (e.g., "5 Stars" -> 5)
-                let ratingVal = 0;
-                if(data.q10) {
-                    ratingVal = parseInt(data.q10.split(" ")[0]); // Takes "5" from "5 Stars"
-                    if(!isNaN(ratingVal)) {
-                        totalStars += ratingVal;
-                        ratedCount++;
-                    }
+                // Stats Calculation (Based on Q9)
+                if(data.q9) {
+                    totalQ9 += data.q9;
+                    q9Count++;
                 }
 
-                // Format Date
+                // Date Format
                 let dateStr = "Just now";
                 if(data.date) {
-                    dateStr = new Date(data.date.seconds * 1000).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+                    dateStr = new Date(data.date.seconds * 1000).toLocaleString('en-IN', { 
+                        month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
+                    });
                 }
 
-                // Determine Border Color based on Rating
-                let borderColor = "border-gray-200";
-                if(ratingVal <= 2) borderColor = "border-red-400"; // Low rating alert
-                else if(ratingVal >= 4) borderColor = "border-green-400"; // Good rating
+                // Determine Card Border Color (Based on Q9 rating)
+                let borderColor = "border-l-4 border-gray-300";
+                if(data.q9 >= 4) borderColor = "border-l-4 border-green-500";
+                else if(data.q9 <= 2) borderColor = "border-l-4 border-red-500";
+                else borderColor = "border-l-4 border-yellow-400";
 
-                // Generate Answers Grid HTML
-                let answersHtml = '';
+                // Generate Grid for Q1-Q9 (Stars)
+                let ratingsHtml = '';
                 for(let i=1; i<=9; i++) {
-                    const key = `q${i}`;
-                    const answer = data[key] || "-";
-                    // Style negative answers in red text slightly
-                    let textClass = "text-gray-800";
-                    if(answer.includes("Late") || answer.includes("Rude") || answer.includes("Pressure") || answer.includes("Harasses") || answer.includes("No")) {
-                        textClass = "text-red-600 font-semibold";
+                    const rating = data[`q${i}`] || 0;
+                    let starHtml = '';
+                    for(let s=1; s<=5; s++) {
+                        if(s <= rating) starHtml += `<i class="fa-solid fa-star text-yellow-400 text-xs"></i>`;
+                        else starHtml += `<i class="fa-solid fa-star text-gray-200 text-xs"></i>`;
                     }
 
-                    answersHtml += `
-                        <div class="bg-gray-50 p-2 rounded">
-                            <p class="answer-label">${i}. ${questionLabels[key]}</p>
-                            <p class="answer-val ${textClass}">${answer}</p>
+                    ratingsHtml += `
+                        <div class="bg-gray-50 p-3 rounded-lg flex flex-col justify-center">
+                            <p class="label-text mb-1">${i}. ${labels[`q${i}`]}</p>
+                            <div class="flex space-x-0.5">${starHtml}</div>
                         </div>
                     `;
                 }
 
+                // Text Answers (Q10 & Q11)
+                const q10Text = data.q10 || "No comment";
+                const q11Text = data.q11 || "No comment";
+
                 const card = `
-                    <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 ${borderColor} relative group hover:shadow-md transition">
+                    <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition p-6 ${borderColor} relative">
                         
-                        <div class="flex justify-between items-start mb-4 border-b pb-2">
+                        <div class="flex justify-between items-start mb-6 border-b pb-4 border-gray-100">
                             <div>
-                                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase">
-                                    <i class="fa-solid fa-star text-yellow-500 mr-1"></i> ${data.q10 || "N/A"}
-                                </span>
-                                <span class="text-xs text-gray-400 ml-2">${dateStr}</span>
+                                <span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded">ID: ...${id.slice(-4)}</span>
+                                <span class="text-gray-400 text-xs ml-2"><i class="fa-regular fa-clock"></i> ${dateStr}</span>
                             </div>
-                            <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 transition" title="Delete">
+                            <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 transition px-2">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2">
-                            ${answersHtml}
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                            ${ratingsHtml}
                         </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <p class="label-text text-blue-800 mb-2"><i class="fa-solid fa-comment-dots mr-1"></i> Q10. LR Suggestions</p>
+                                <p class="text-sm text-gray-700 italic">"${q10Text}"</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                <p class="label-text text-purple-800 mb-2"><i class="fa-solid fa-message mr-1"></i> Q11. General Feedback</p>
+                                <p class="text-sm text-gray-700 italic">"${q11Text}"</p>
+                            </div>
+                        </div>
+
                     </div>
                 `;
                 list.innerHTML += card;
             });
 
-            // Update Stats
+            // Update Header Stats
             countDisplay.innerText = snapshot.size;
-            if(ratedCount > 0) {
-                avgDisplay.innerText = (totalStars / ratedCount).toFixed(1);
+            if(q9Count > 0) {
+                avgDisplay.innerText = (totalQ9 / q9Count).toFixed(1);
             } else {
                 avgDisplay.innerText = "0.0";
             }
         });
 
+        // Delete Function
         window.deleteFeedback = async (id) => {
-            if(confirm("Are you sure you want to delete this record?")) {
+            if(confirm("Are you sure you want to delete this feedback?")) {
                 try {
                     await deleteDoc(doc(db, "feedbacks", id));
                 } catch(e) {
-                    console.error(e);
-                    alert("Delete failed.");
+                    console.error("Delete Error:", e);
+                    alert("Failed to delete.");
                 }
             }
         }
