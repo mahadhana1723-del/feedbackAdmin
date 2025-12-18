@@ -30,17 +30,17 @@
 
             <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 class="text-xs font-bold text-blue-200 uppercase tracking-widest mb-4 border-b border-white/10 pb-2">
-                    Global Performance (Average Ratings)
+                    Performance Stats (Starting 9 Questions Avg)
                 </h3>
                 
-                <div id="averagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                <div id="averagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                     <div class="col-span-full text-center text-blue-200 py-4">Loading stats...</div>
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
                     <div>
-                        <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Overall Performance (Last 6 Months)</p>
-                        <p class="text-blue-200 text-xs mt-1">Average rating from all staff</p>
+                        <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Global Overall Rating (Last Question)</p>
+                        <p class="text-blue-200 text-xs mt-1">Average of the final rating question only</p>
                     </div>
                     <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg border border-yellow-500/50">
                         <span class="text-4xl font-bold text-white" id="globalOverall">0.0</span>
@@ -82,16 +82,17 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Labels for Q1-Q8 (No Numbers)
+        // Labels for Q1-Q9 (Includes LR as Q9)
         const questionLabels = {
-            q1: "Leave Handling",
-            q2: "CCC Behavior",
-            q3: "Complaint Response",
-            q4: "Train Planning",
-            q5: "Phone Response",
-            q6: "Booking Pattern",
-            q7: "TPC Staff",
-            q8: "CMS Staff"
+            q1: "1. Leave Handling",
+            q2: "2. CCC Behavior",
+            q3: "3. Complaint Response",
+            q4: "4. Train Planning",
+            q5: "5. Phone Response",
+            q6: "6. Booking Pattern",
+            q7: "7. TPC Staff",
+            q8: "8. CMS Staff",
+            q10: "9. LR Initiative" // Internal ID q10 is Question 9 on form
         };
 
         const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
@@ -118,31 +119,67 @@
             let stats = {
                 q1: { sum:0, count:0 }, q2: { sum:0, count:0 }, q3: { sum:0, count:0 },
                 q4: { sum:0, count:0 }, q5: { sum:0, count:0 }, q6: { sum:0, count:0 },
-                q7: { sum:0, count:0 }, q8: { sum:0, count:0 }, q9: { sum:0, count:0 }
+                q7: { sum:0, count:0 }, q8: { sum:0, count:0 }, 
+                q10: { sum:0, count:0 }, // LR
+                q9: { sum:0, count:0 }  // Overall Rating (Separate)
+            };
+
+            // Helper to score LR Text (Q10)
+            const getLRScore = (text) => {
+                if(!text) return 0;
+                if(text.includes("Excellent")) return 5;
+                if(text.includes("Very Useful")) return 4;
+                if(text.includes("Good")) return 3;
+                if(text.includes("Satisfactory")) return 2;
+                if(text.includes("Not Useful")) return 1;
+                return 0;
             };
 
             snapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 const id = docSnap.id;
 
-                // 1. Accumulate Stats (Q1-Q9)
-                for(let i=1; i<=9; i++) {
+                // 1. Accumulate Stats for Q1-Q8 (Numbers)
+                for(let i=1; i<=8; i++) {
                     if(data[`q${i}`] && typeof data[`q${i}`] === 'number') {
                         stats[`q${i}`].sum += data[`q${i}`];
                         stats[`q${i}`].count++;
                     }
                 }
 
-                // 2. Person's Average (Q1-Q8 + Q9)
+                // 2. Accumulate Stats for Q9 (LR - stored as q10)
+                const lrText = data.q10 || "";
+                const lrScore = getLRScore(lrText);
+                if(lrScore > 0) {
+                    stats.q10.sum += lrScore;
+                    stats.q10.count++;
+                }
+
+                // 3. Accumulate Overall Rating (stored as q9)
+                if(data.q9 && typeof data.q9 === 'number') {
+                    stats.q9.sum += data.q9;
+                    stats.q9.count++;
+                }
+
+                // --- CALCULATE PERSON'S AVERAGE (Starting 9 Questions) ---
                 let personSum = 0;
                 let personCount = 0;
-                for(let i=1; i<=9; i++) {
+
+                // Sum Q1-Q8
+                for(let i=1; i<=8; i++) {
                     if(data[`q${i}`] && typeof data[`q${i}`] === 'number') {
                         personSum += data[`q${i}`];
                         personCount++;
                     }
                 }
+                // Add LR Score (Q9 on form)
+                if(lrScore > 0) {
+                    personSum += lrScore;
+                    personCount++;
+                }
+
                 const personAvg = personCount > 0 ? (personSum / personCount).toFixed(1) : "0.0";
+                const overallRating = data.q9 || 0;
 
                 // Score Badge Color
                 let scoreColor = "text-blue-600 bg-blue-50 border-blue-200";
@@ -153,27 +190,19 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
                     }) : "Just now";
 
-                // --- DATA MAPPING FIX ---
-                // Q9 in DB is Rating (Number)
-                let overallRating = data.q9 || 0;
-                
-                // Q10 in DB is LR Feedback (Text)
-                let lrFeedback = data.q10 || 'Nil';
+                // LR Visual Logic
                 let lrStyle = "bg-gray-50 border-gray-100 text-gray-700";
                 let lrIcon = "fa-comment-dots";
-                if (lrFeedback.includes("Excellent") || lrFeedback.includes("Very Useful")) {
+                if (lrText.includes("Excellent") || lrText.includes("Very Useful")) {
                     lrStyle = "bg-green-50 border-green-200 text-green-800";
                     lrIcon = "fa-circle-check";
-                } else if (lrFeedback.includes("Not Useful")) {
+                } else if (lrText.includes("Not Useful")) {
                     lrStyle = "bg-red-50 border-red-200 text-red-800";
                     lrIcon = "fa-circle-exclamation";
-                } else if (lrFeedback.includes("Good")) {
+                } else if (lrText.includes("Good")) {
                     lrStyle = "bg-blue-50 border-blue-200 text-blue-800";
                     lrIcon = "fa-thumbs-up";
                 }
-
-                // Q11 in DB is General Suggestions (Text)
-                let generalFeedback = data.q11 || 'Nil';
 
                 // --- CARD HTML ---
                 const card = `
@@ -191,10 +220,10 @@
 
                         <div class="p-5 flex flex-col sm:flex-row gap-6">
                             
-                            <div class="w-full sm:w-32 flex flex-col items-center justify-center gap-3 border-b sm:border-b-0 sm:border-r border-gray-100 pb-4 sm:pb-0">
+                            <div class="w-full sm:w-32 flex flex-col items-center justify-center gap-4 border-b sm:border-b-0 sm:border-r border-gray-100 pb-4 sm:pb-0">
                                 
                                 <div class="text-center">
-                                    <span class="text-[0.6rem] text-gray-400 uppercase font-bold tracking-wider">Avg Score</span>
+                                    <span class="text-[0.6rem] text-gray-400 uppercase font-bold tracking-wider block" title="Avg of first 9 questions">9-Q Avg Score</span>
                                     <div class="w-16 h-16 mx-auto rounded-full border-4 ${scoreColor} flex items-center justify-center bg-white shadow-sm mt-1">
                                         <span class="text-2xl font-bold ${scoreColor.split(' ')[0]}">${personAvg}</span>
                                     </div>
@@ -210,20 +239,23 @@
 
                             <div class="flex-1 space-y-3">
                                 
-                                <div class="${lrStyle} p-3 rounded-lg border relative">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <i class="fa-solid ${lrIcon} text-xs"></i>
-                                        <span class="text-[0.65rem] font-bold uppercase tracking-wider opacity-80">LR Initiative Feedback</span>
+                                <div class="${lrStyle} p-3 rounded-lg border relative transition-colors duration-300">
+                                    <div class="absolute -top-2 left-2 ${lrStyle} border-b-0 px-2 rounded text-[0.6rem] font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <i class="fa-solid ${lrIcon}"></i> 9. LR Initiative
                                     </div>
-                                    <p class="text-sm font-medium leading-relaxed">${lrFeedback}</p>
+                                    <div class="flex justify-between items-start mt-1">
+                                        <p class="text-sm font-medium leading-relaxed">${lrText}</p>
+                                        <span class="text-[0.65rem] font-bold bg-white/50 px-1.5 py-0.5 rounded border border-black/5 opacity-60">
+                                            Score: ${lrScore}/5
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 group">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <i class="fa-regular fa-comments text-gray-400 text-xs"></i>
-                                        <span class="text-[0.65rem] font-bold text-gray-400 uppercase tracking-wider">General Suggestions</span>
-                                    </div>
-                                    <p class="text-xs text-gray-600 italic leading-relaxed">"${generalFeedback}"</p>
+                                    <div class="absolute -top-2 left-2 bg-gray-100 text-gray-500 text-[0.6rem] font-bold px-2 rounded">General Suggestions</div>
+                                    <p class="text-xs text-gray-600 italic mt-1 leading-relaxed">
+                                        "${data.q11 || 'Nil'}"
+                                    </p>
                                 </div>
 
                             </div>
@@ -236,16 +268,18 @@
             // --- DASHBOARD TOTALS ---
             totalCountDisplay.innerText = snapshot.size;
 
-            for(let i=1; i<=8; i++) {
-                let avg = stats[`q${i}`].count > 0 ? (stats[`q${i}`].sum / stats[`q${i}`].count).toFixed(1) : "0.0";
-                
+            // Display Q1-Q8 and Q10 (LR) in the Grid
+            const gridKeys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q10'];
+            
+            gridKeys.forEach(key => {
+                let avg = stats[key].count > 0 ? (stats[key].sum / stats[key].count).toFixed(1) : "0.0";
                 let percent = (avg / 5) * 100;
                 let colorClass = avg >= 4 ? "bg-green-400" : (avg <= 2.5 ? "bg-red-400" : "bg-yellow-400");
 
                 avgGrid.innerHTML += `
                     <div>
                         <div class="flex justify-between mb-1">
-                            <span class="text-blue-200 text-xs">${questionLabels[`q${i}`]}</span>
+                            <span class="text-blue-200 text-xs">${questionLabels[key]}</span>
                             <span class="font-bold text-white text-xs">${avg}</span>
                         </div>
                         <div class="w-full bg-blue-900/50 rounded-full h-1.5">
@@ -253,7 +287,7 @@
                         </div>
                     </div>
                 `;
-            }
+            });
 
             // Global Overall (Q9) Update
             let globalAvg = stats.q9.count > 0 ? (stats.q9.sum / stats.q9.count).toFixed(1) : "0.0";
