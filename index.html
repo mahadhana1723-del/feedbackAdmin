@@ -30,7 +30,7 @@
 
             <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 class="text-xs font-bold text-blue-200 uppercase tracking-widest mb-4 border-b border-white/10 pb-2">
-                    Performance Stats (Q5 is excluded from Avg)
+                    Performance Stats (Note: Q5 shows Yes %)
                 </h3>
                 
                 <div id="averagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
@@ -39,7 +39,7 @@
 
                 <div class="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
                     <div>
-                        <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Global Overall Rating (Last Question)</p>
+                        <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Overall Performance (Last 6 Months)</p>
                         <p class="text-blue-200 text-xs mt-1">Average rating from all CREW</p>
                     </div>
                     <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg border border-yellow-500/50">
@@ -69,6 +69,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
+        // 🔥 Replace with your actual Firebase config if needed, or keep using the existing one
         const firebaseConfig = {
             apiKey: "AIzaSyCpEMtX1eP7YwZDH0qLBRGci6VkhBgcJVo",
             authDomain: "feedback-4ace7.firebaseapp.com",
@@ -82,6 +83,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Updated Labels
         const questionLabels = {
             q1: "1. Leave & Adjustments",
             q2: "2. CCC Behavior",
@@ -91,7 +93,7 @@
             q6: "6. CC Booking Pattern",
             q7: "7. TPC Staff",
             q8: "8. CMS Staff",
-            q10: "9. LR Initiative"
+            q10: "9. LR Initiative" // q10 in DB corresponds to Q9 on form
         };
 
         const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
@@ -118,17 +120,19 @@
             let stats = {
                 q1: { sum:0, count:0 }, q2: { sum:0, count:0 }, q3: { sum:0, count:0 },
                 q4: { sum:0, count:0 }, 
-                q5: { yes:0, total:0 }, // Special handling for PR
+                q5: { yes:0, total:0 }, // Special handling for PR (Yes/No)
                 q6: { sum:0, count:0 }, q7: { sum:0, count:0 }, q8: { sum:0, count:0 }, 
                 q10: { sum:0, count:0 }, // LR
                 q9: { sum:0, count:0 }  // Overall
             };
 
+            // Helper to score LR Text (Updated for "Need Improvements")
             const getLRScore = (text) => {
                 if(!text || typeof text !== 'string') return 0;
                 if(text.includes("Excellent")) return 5;
                 if(text.includes("Very Useful")) return 4;
                 if(text.includes("Good")) return 3;
+                if(text.includes("Need Improvements")) return 3; // Assigned score 3 for Need Improvements
                 if(text.includes("Satisfactory")) return 2;
                 if(text.includes("Not Useful")) return 1;
                 return 0;
@@ -138,7 +142,7 @@
                 const data = docSnap.data();
                 const id = docSnap.id;
 
-                // 1. Accumulate Stats for Q1-Q8 (Safe Check for Q5)
+                // 1. Accumulate Stats for Q1-Q8 (Skip Q5 logic inside)
                 for(let i=1; i<=8; i++) {
                     if(i === 5) {
                         // Handle Q5 (Check if it is string Yes/No)
@@ -155,7 +159,7 @@
                     }
                 }
 
-                // 2. LR Score
+                // 2. LR Score (q10)
                 const lrText = data.q10 || "";
                 const lrScore = getLRScore(lrText);
                 if(lrScore > 0) {
@@ -163,28 +167,28 @@
                     stats.q10.count++;
                 }
 
-                // 3. Overall Rating
+                // 3. Overall Rating (q9)
                 if(data.q9 && typeof data.q9 === 'number') {
                     stats.q9.sum += data.q9;
                     stats.q9.count++;
                 }
 
-                // --- PERSON'S AVG ---
+                // --- PERSON'S AVG CALCULATION (Excluding Q5) ---
                 let personSum = 0;
                 let personCount = 0;
                 for(let i=1; i<=8; i++) {
-                    if(i === 5) continue; // Skip PR from average
+                    if(i === 5) continue; // Skip PR from numeric average
                     if(data[`q${i}`] && typeof data[`q${i}`] === 'number') {
                         personSum += data[`q${i}`];
                         personCount++;
                     }
                 }
-                if(lrScore > 0) { personSum += lrScore; personCount++; }
+                if(lrScore > 0) { personSum += lrScore; personCount++; } // Include LR score
 
                 const personAvg = personCount > 0 ? (personSum / personCount).toFixed(1) : "0.0";
                 const overallRating = data.q9 || 0;
 
-                // Colors
+                // Color Logic
                 let scoreColor = "text-blue-600 bg-blue-50 border-blue-200";
                 if(personAvg >= 4) scoreColor = "text-green-600 bg-green-50 border-green-200";
                 if(personAvg <= 2.5) scoreColor = "text-red-600 bg-red-50 border-red-200";
@@ -193,21 +197,24 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
                     }) : "Just now";
 
+                // --- VISUAL STYLES ---
+
                 // LR Visuals (Safe String Check)
                 let lrStyle = "bg-gray-50 border-gray-100 text-gray-700";
                 let lrIcon = "fa-comment-dots";
-                // Ensure lrText is a string before checking includes
                 if (typeof lrText === 'string') {
                     if (lrText.includes("Excellent") || lrText.includes("Very Useful")) {
                         lrStyle = "bg-green-50 border-green-200 text-green-800"; lrIcon = "fa-circle-check";
                     } else if (lrText.includes("Not Useful")) {
                         lrStyle = "bg-red-50 border-red-200 text-red-800"; lrIcon = "fa-circle-exclamation";
-                    } else if (lrText.includes("Good")) {
+                    } else if (lrText.includes("Good") || lrText.includes("Satisfactory")) {
                         lrStyle = "bg-blue-50 border-blue-200 text-blue-800"; lrIcon = "fa-thumbs-up";
+                    } else if (lrText.includes("Need Improvements")) {
+                        lrStyle = "bg-orange-50 border-orange-200 text-orange-800"; lrIcon = "fa-screwdriver-wrench";
                     }
                 }
 
-                // Q5 (PR) Visuals (SAFE LOGIC FOR OLD & NEW DATA)
+                // Q5 (PR) Visuals (Handle Old & New Data)
                 let q5Val = data.q5;
                 let q5Html = "";
                 
@@ -227,9 +234,9 @@
                         q5Html = `<div class="bg-gray-50 text-gray-500 px-3 py-2 rounded text-xs">PR Info: ${q5Val}</div>`;
                     }
                 } else if (typeof q5Val === 'number') {
-                    // Old Data (Star Rating 1-5)
+                    // Old Data (Star Rating)
                     q5Html = `<div class="bg-gray-100 text-gray-500 px-3 py-2 rounded-lg border border-gray-200 text-xs flex items-center">
-                                <i class="fa-regular fa-clock mr-2"></i> Legacy Rating: ${q5Val}/5 (Old Format)
+                                <i class="fa-regular fa-clock mr-2"></i> PR Rating: ${q5Val}/5 (Old Format)
                               </div>`;
                 } else {
                     q5Html = `<div class="text-gray-400 text-xs px-2">PR: Not Answered</div>`;
@@ -301,7 +308,7 @@
                 let html = "";
                 
                 if(key === 'q5') {
-                    // Custom display for PR (Percentage)
+                    // Q5: Show Percentage of YES
                     let total = stats.q5.total;
                     let yesPct = total > 0 ? Math.round((stats.q5.yes / total) * 100) : 0;
                     html = `
@@ -316,7 +323,7 @@
                         </div>
                     `;
                 } else {
-                    // Standard Average Display
+                    // Others: Show Average
                     let avg = stats[key].count > 0 ? (stats[key].sum / stats[key].count).toFixed(1) : "0.0";
                     let percent = (avg / 5) * 100;
                     let colorClass = avg >= 4 ? "bg-green-400" : (avg <= 2.5 ? "bg-red-400" : "bg-yellow-400");
