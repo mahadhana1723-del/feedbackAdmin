@@ -3,34 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RU DEPOT Feedback Admin</title>
+    <title>LR Team Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; }
-        .dashboard-card { background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%); color: white; }
+        body { font-family: 'Poppins', sans-serif; background-color: #f1f5f9; }
+        .dashboard-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
     </style>
 </head>
 <body class="pb-20">
 
-    <div class="dashboard-card shadow-2xl border-b-4 border-yellow-500 pb-8 pt-6 px-4">
+    <div class="dashboard-card shadow-2xl border-b-4 border-blue-500 pb-8 pt-6 px-4">
         <div class="max-w-6xl mx-auto">
             
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold tracking-wide flex items-center">
-                    <i class="fa-solid fa-chart-line text-yellow-400 mr-3"></i> 
-                    LIVE ANALYTICS DASHBOARD
+                    <i class="fa-solid fa-chart-pie text-blue-400 mr-3"></i> 
+                    LR TEAM ANALYTICS
                 </h1>
                 <div class="text-right">
-                    <span class="text-xs text-blue-300 uppercase tracking-widest block">Total Feedbacks</span>
+                    <span class="text-xs text-gray-300 uppercase tracking-widest block">Total Submissions</span>
                     <span class="text-3xl font-bold text-white" id="totalCount">0</span>
                 </div>
             </div>
 
-            <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/10">
                 <h3 class="text-xs font-bold text-blue-200 uppercase tracking-widest mb-4 border-b border-white/10 pb-2">
-                    Performance Stats (Note: Q5 shows Yes %)
+                    Average Ratings per Category (Out of 5)
                 </h3>
                 
                 <div id="averagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
@@ -39,10 +39,10 @@
 
                 <div class="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
                     <div>
-                        <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Overall Performance (Last 6 Months)</p>
-                        <p class="text-blue-200 text-xs mt-1">Average rating from all CREW</p>
+                        <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Global Team Rating</p>
+                        <p class="text-gray-300 text-xs mt-1">Overall average of all 9 metrics from all users</p>
                     </div>
-                    <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg border border-yellow-500/50">
+                    <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg border border-yellow-500/30 shadow-inner">
                         <span class="text-4xl font-bold text-white" id="globalOverall">0.0</span>
                         <div class="text-yellow-400 text-sm">
                             <i class="fa-solid fa-star"></i>
@@ -55,11 +55,11 @@
     </div>
 
     <div class="max-w-5xl mx-auto px-4 mt-8">
-        <h3 class="text-gray-400 font-bold uppercase text-xs tracking-widest mb-4 ml-1">Recent Submissions</h3>
+        <h3 class="text-gray-500 font-bold uppercase text-xs tracking-widest mb-4 ml-1">Recent Detailed Submissions</h3>
         
         <div id="loading" class="text-center py-10">
             <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-600 mb-2"></i>
-            <p class="text-gray-500 text-sm">Syncing...</p>
+            <p class="text-gray-500 text-sm">Syncing Data...</p>
         </div>
 
         <div id="feedbackList" class="flex flex-col gap-6 hidden"></div>
@@ -69,7 +69,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // 🔥 Replace with your actual Firebase config if needed, or keep using the existing one
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCpEMtX1eP7YwZDH0qLBRGci6VkhBgcJVo",
             authDomain: "feedback-4ace7.firebaseapp.com",
@@ -83,20 +83,21 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Updated Labels
+        // Labels for the 9 rated questions
         const questionLabels = {
-            q1: "1. Leave & Adjustments",
-            q2: "2. CCC Behavior",
-            q3: "3. Complaint Response",
-            q4: "4. Train Planning",
-            q5: "5. Periodical Rest (PR)", 
-            q6: "6. CC Booking Pattern",
-            q7: "7. TPC Staff",
-            q8: "8. CMS Staff",
-            q10: "9. LR Initiative" // q10 in DB corresponds to Q9 on form
+            q1: "1. Crew Utilization",
+            q2: "2. Adjustments Resp.",
+            q3: "3. Approachability",
+            q4: "4. Request Handling",
+            q5: "5. Seniority Mgmt", 
+            q6: "6. Coordination",
+            q7: "7. Emergency Handling",
+            q8: "8. LR/Handlings Mgmt",
+            q9: "9. Mutual Respect"
         };
 
-        const q = query(collection(db, "feedbacks"), orderBy("date", "desc"));
+        // Querying the NEW collection "lr_feedbacks"
+        const q = query(collection(db, "lr_feedbacks"), orderBy("date", "desc"));
 
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('feedbackList');
@@ -112,83 +113,45 @@
             avgGrid.innerHTML = "";
 
             if(snapshot.empty) {
-                list.innerHTML = `<div class="text-center py-10 text-gray-400">No feedback yet.</div>`;
+                list.innerHTML = `<div class="text-center py-10 text-gray-400">No feedback submitted yet.</div>`;
                 return;
             }
 
-            // --- STATISTICS VARS ---
-            let stats = {
-                q1: { sum:0, count:0 }, q2: { sum:0, count:0 }, q3: { sum:0, count:0 },
-                q4: { sum:0, count:0 }, 
-                q5: { yes:0, total:0 }, // Special handling for PR (Yes/No)
-                q6: { sum:0, count:0 }, q7: { sum:0, count:0 }, q8: { sum:0, count:0 }, 
-                q10: { sum:0, count:0 }, // LR
-                q9: { sum:0, count:0 }  // Overall
-            };
+            // Stats object for 9 questions
+            let stats = {};
+            for(let i=1; i<=9; i++) {
+                stats[`q${i}`] = { sum: 0, count: 0 };
+            }
 
-            // Helper to score LR Text (Updated for "Need Improvements")
-            const getLRScore = (text) => {
-                if(!text || typeof text !== 'string') return 0;
-                if(text.includes("Excellent")) return 5;
-                if(text.includes("Very Useful")) return 4;
-                if(text.includes("Good")) return 3;
-                if(text.includes("Need Improvements")) return 3; // Assigned score 3 for Need Improvements
-                if(text.includes("Satisfactory")) return 2;
-                if(text.includes("Not Useful")) return 1;
-                return 0;
-            };
+            let globalSum = 0;
+            let globalCount = 0;
 
             snapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 const id = docSnap.id;
 
-                // 1. Accumulate Stats for Q1-Q8 (Skip Q5 logic inside)
-                for(let i=1; i<=8; i++) {
-                    if(i === 5) {
-                        // Handle Q5 (Check if it is string Yes/No)
-                        if(data.q5 && typeof data.q5 === 'string') {
-                            stats.q5.total++;
-                            if(data.q5.startsWith("Yes")) stats.q5.yes++;
-                        }
-                    } else {
-                        // Handle Q1,2,3,4,6,7,8 (Ratings)
-                        if(data[`q${i}`] && typeof data[`q${i}`] === 'number') {
-                            stats[`q${i}`].sum += data[`q${i}`];
-                            stats[`q${i}`].count++;
-                        }
-                    }
-                }
-
-                // 2. LR Score (q10)
-                const lrText = data.q10 || "";
-                const lrScore = getLRScore(lrText);
-                if(lrScore > 0) {
-                    stats.q10.sum += lrScore;
-                    stats.q10.count++;
-                }
-
-                // 3. Overall Rating (q9)
-                if(data.q9 && typeof data.q9 === 'number') {
-                    stats.q9.sum += data.q9;
-                    stats.q9.count++;
-                }
-
-                // --- PERSON'S AVG CALCULATION (Excluding Q5) ---
                 let personSum = 0;
                 let personCount = 0;
-                for(let i=1; i<=8; i++) {
-                    if(i === 5) continue; // Skip PR from numeric average
+
+                // Process Q1 to Q9 (Ratings)
+                for(let i=1; i<=9; i++) {
                     if(data[`q${i}`] && typeof data[`q${i}`] === 'number') {
-                        personSum += data[`q${i}`];
+                        let val = data[`q${i}`];
+                        stats[`q${i}`].sum += val;
+                        stats[`q${i}`].count++;
+                        
+                        personSum += val;
                         personCount++;
+
+                        globalSum += val;
+                        globalCount++;
                     }
                 }
-                if(lrScore > 0) { personSum += lrScore; personCount++; } // Include LR score
 
+                // Average for this specific person
                 const personAvg = personCount > 0 ? (personSum / personCount).toFixed(1) : "0.0";
-                const overallRating = data.q9 || 0;
-
-                // Color Logic
+                
+                // Color Logic based on average
                 let scoreColor = "text-blue-600 bg-blue-50 border-blue-200";
                 if(personAvg >= 4) scoreColor = "text-green-600 bg-green-50 border-green-200";
                 if(personAvg <= 2.5) scoreColor = "text-red-600 bg-red-50 border-red-200";
@@ -197,60 +160,18 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
                     }) : "Just now";
 
-                // --- VISUAL STYLES ---
+                // Descriptive Text (Q10)
+                let descText = data.q10 || "No descriptive feedback provided.";
 
-                // LR Visuals (Safe String Check)
-                let lrStyle = "bg-gray-50 border-gray-100 text-gray-700";
-                let lrIcon = "fa-comment-dots";
-                if (typeof lrText === 'string') {
-                    if (lrText.includes("Excellent") || lrText.includes("Very Useful")) {
-                        lrStyle = "bg-green-50 border-green-200 text-green-800"; lrIcon = "fa-circle-check";
-                    } else if (lrText.includes("Not Useful")) {
-                        lrStyle = "bg-red-50 border-red-200 text-red-800"; lrIcon = "fa-circle-exclamation";
-                    } else if (lrText.includes("Good") || lrText.includes("Satisfactory")) {
-                        lrStyle = "bg-blue-50 border-blue-200 text-blue-800"; lrIcon = "fa-thumbs-up";
-                    } else if (lrText.includes("Need Improvements")) {
-                        lrStyle = "bg-orange-50 border-orange-200 text-orange-800"; lrIcon = "fa-screwdriver-wrench";
-                    }
-                }
-
-                // Q5 (PR) Visuals (Handle Old & New Data)
-                let q5Val = data.q5;
-                let q5Html = "";
-                
-                if (typeof q5Val === 'string') {
-                    // New Data (Yes/No)
-                    if(q5Val.startsWith("Yes")) {
-                        q5Html = `<div class="bg-green-100 text-green-800 px-3 py-2 rounded-lg border border-green-200 text-sm font-bold flex items-center">
-                                    <i class="fa-solid fa-check-circle mr-2"></i> PR Availed: YES
-                                  </div>`;
-                    } else if(q5Val.startsWith("No")) {
-                        let reason = q5Val.replace("No - ", "");
-                        q5Html = `<div class="bg-red-50 text-red-800 px-3 py-2 rounded-lg border border-red-200 text-sm">
-                                    <div class="font-bold flex items-center mb-1"><i class="fa-solid fa-circle-xmark mr-2"></i> PR Availed: NO</div>
-                                    <div class="text-xs italic bg-white/50 p-1 rounded">"${reason}"</div>
-                                  </div>`;
-                    } else {
-                        q5Html = `<div class="bg-gray-50 text-gray-500 px-3 py-2 rounded text-xs">PR Info: ${q5Val}</div>`;
-                    }
-                } else if (typeof q5Val === 'number') {
-                    // Old Data (Star Rating)
-                    q5Html = `<div class="bg-gray-100 text-gray-500 px-3 py-2 rounded-lg border border-gray-200 text-xs flex items-center">
-                                <i class="fa-regular fa-clock mr-2"></i> PR Rating: ${q5Val}/5 (Old Format)
-                              </div>`;
-                } else {
-                    q5Html = `<div class="text-gray-400 text-xs px-2">PR: Not Answered</div>`;
-                }
-
-                // CARD HTML
+                // Generate Card
                 const card = `
-                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
                         
                         <div class="bg-gray-50 px-4 py-2 flex justify-between items-center border-b border-gray-100">
-                            <span class="text-xs font-mono text-gray-400 font-bold">#${id.slice(-4)}</span>
+                            <span class="text-xs font-mono text-gray-500 font-bold">ID: #${id.slice(-5).toUpperCase()}</span>
                             <div class="flex items-center gap-3">
-                                <span class="text-xs text-gray-400 font-medium"><i class="fa-regular fa-clock mr-1"></i> ${dateStr}</span>
-                                <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 transition text-sm">
+                                <span class="text-xs text-gray-500 font-medium"><i class="fa-regular fa-clock mr-1"></i> ${dateStr}</span>
+                                <button onclick="window.deleteFeedback('${id}')" class="text-gray-300 hover:text-red-500 transition text-sm" title="Delete record">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
@@ -258,40 +179,18 @@
 
                         <div class="p-5 flex flex-col sm:flex-row gap-6">
                             
-                            <div class="w-full sm:w-36 flex flex-col items-center justify-center gap-4 border-b sm:border-b-0 sm:border-r border-gray-100 pb-4 sm:pb-0">
-                                <div class="text-center">
-                                    <span class="text-[0.6rem] text-gray-400 uppercase font-bold tracking-wider block" title="Avg of Q1-4, Q6-8, LR">Avg Score</span>
-                                    <div class="w-16 h-16 mx-auto rounded-full border-4 ${scoreColor} flex items-center justify-center bg-white shadow-sm mt-1">
-                                        <span class="text-2xl font-bold ${scoreColor.split(' ')[0]}">${personAvg}</span>
-                                    </div>
-                                </div>
-                                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-2 text-center w-full shadow-sm">
-                                    <span class="text-[0.55rem] text-yellow-700 font-bold uppercase block tracking-wide">Overall Rating</span>
-                                    <div class="text-xl font-bold text-yellow-600 flex justify-center items-center gap-1">
-                                        ${overallRating} <i class="fa-solid fa-star text-xs"></i>
-                                    </div>
+                            <div class="w-full sm:w-40 flex flex-col items-center justify-center border-b sm:border-b-0 sm:border-r border-gray-100 pb-4 sm:pb-0">
+                                <span class="text-[0.65rem] text-gray-400 uppercase font-bold tracking-wider block mb-2">User's Average</span>
+                                <div class="w-20 h-20 mx-auto rounded-full border-4 ${scoreColor} flex items-center justify-center bg-white shadow-sm">
+                                    <span class="text-3xl font-bold ${scoreColor.split(' ')[0]}">${personAvg}</span>
                                 </div>
                             </div>
 
-                            <div class="flex-1 space-y-3">
-                                
-                                ${q5Html}
-
-                                <div class="${lrStyle} p-3 rounded-lg border relative transition-colors duration-300">
-                                    <div class="absolute -top-2 left-2 ${lrStyle} border-b-0 px-2 rounded text-[0.6rem] font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <i class="fa-solid ${lrIcon}"></i> 9. LR Initiative
-                                    </div>
-                                    <div class="flex justify-between items-start mt-1">
-                                        <p class="text-sm font-medium leading-relaxed">${lrText}</p>
-                                        <span class="text-[0.65rem] font-bold bg-white/50 px-1.5 py-0.5 rounded border border-black/5 opacity-60">Score: ${lrScore}/5</span>
-                                    </div>
-                                </div>
-
-                                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 group">
-                                    <div class="absolute -top-2 left-2 bg-gray-100 text-gray-500 text-[0.6rem] font-bold px-2 rounded">General Suggestions</div>
-                                    <p class="text-xs text-gray-600 italic mt-1 leading-relaxed">"${data.q11 || 'Nil'}"</p>
-                                </div>
-
+                            <div class="flex-1">
+                                <h4 class="text-xs font-bold text-blue-900 uppercase mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-comment-dots text-blue-500"></i> Descriptive Feedback (Q10)
+                                </h4>
+                                <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${descText}</div>
                             </div>
                         </div>
                     </div>
@@ -299,57 +198,42 @@
                 list.innerHTML += card;
             });
 
-            // --- DASHBOARD GRIDS ---
+            // Update Global Stats
             totalCountDisplay.innerText = snapshot.size;
 
-            const gridKeys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q10'];
-            
-            gridKeys.forEach(key => {
-                let html = "";
+            // Generate Grid Items for Q1-Q9
+            for(let i=1; i<=9; i++) {
+                let key = `q${i}`;
+                let avg = stats[key].count > 0 ? (stats[key].sum / stats[key].count).toFixed(1) : "0.0";
+                let percent = (avg / 5) * 100;
                 
-                if(key === 'q5') {
-                    // Q5: Show Percentage of YES
-                    let total = stats.q5.total;
-                    let yesPct = total > 0 ? Math.round((stats.q5.yes / total) * 100) : 0;
-                    html = `
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <span class="text-blue-200 text-xs">${questionLabels[key]}</span>
-                                <span class="font-bold text-white text-xs">${yesPct}% Yes</span>
-                            </div>
-                            <div class="w-full bg-blue-900/50 rounded-full h-1.5">
-                                <div class="bg-green-400 h-1.5 rounded-full" style="width: ${yesPct}%"></div>
-                            </div>
+                // Bar color logic
+                let colorClass = avg >= 4 ? "bg-green-400" : (avg <= 2.5 ? "bg-red-400" : "bg-yellow-400");
+                
+                let html = `
+                    <div class="bg-white/5 p-3 rounded-lg border border-white/10 hover:bg-white/10 transition">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-300 text-xs font-medium truncate pr-2" title="${questionLabels[key]}">${questionLabels[key]}</span>
+                            <span class="font-bold text-white text-xs">${avg} <i class="fa-solid fa-star text-[0.6rem] text-yellow-500"></i></span>
                         </div>
-                    `;
-                } else {
-                    // Others: Show Average
-                    let avg = stats[key].count > 0 ? (stats[key].sum / stats[key].count).toFixed(1) : "0.0";
-                    let percent = (avg / 5) * 100;
-                    let colorClass = avg >= 4 ? "bg-green-400" : (avg <= 2.5 ? "bg-red-400" : "bg-yellow-400");
-                    html = `
-                        <div>
-                            <div class="flex justify-between mb-1">
-                                <span class="text-blue-200 text-xs">${questionLabels[key]}</span>
-                                <span class="font-bold text-white text-xs">${avg}</span>
-                            </div>
-                            <div class="w-full bg-blue-900/50 rounded-full h-1.5">
-                                <div class="${colorClass} h-1.5 rounded-full" style="width: ${percent}%"></div>
-                            </div>
+                        <div class="w-full bg-black/40 rounded-full h-2 shadow-inner">
+                            <div class="${colorClass} h-2 rounded-full shadow" style="width: ${percent}%"></div>
                         </div>
-                    `;
-                }
+                    </div>
+                `;
                 avgGrid.innerHTML += html;
-            });
+            }
 
-            let globalAvg = stats.q9.count > 0 ? (stats.q9.sum / stats.q9.count).toFixed(1) : "0.0";
-            globalOverallDisplay.innerText = globalAvg;
+            // Global Overall Rating
+            let gAvg = globalCount > 0 ? (globalSum / globalCount).toFixed(1) : "0.0";
+            globalOverallDisplay.innerText = gAvg;
 
         });
 
+        // Delete function targets the new collection
         window.deleteFeedback = async (id) => {
             if(confirm("Delete this feedback permanently?")) {
-                try { await deleteDoc(doc(db, "feedbacks", id)); } 
+                try { await deleteDoc(doc(db, "lr_feedbacks", id)); } 
                 catch(e) { alert("Error: " + e.message); }
             }
         }
