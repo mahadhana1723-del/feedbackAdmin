@@ -33,14 +33,14 @@
                     Average Ratings per Category (Out of 5)
                 </h3>
                 
-                <div id="averagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                <div id="averagesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 text-sm">
                     <div class="col-span-full text-center text-blue-200 py-4">Loading stats...</div>
                 </div>
 
                 <div class="mt-6 pt-4 border-t border-white/20 flex items-center justify-between">
                     <div>
                         <p class="text-yellow-400 font-bold uppercase tracking-widest text-xs">Overall Team Rating</p>
-                        <p class="text-gray-300 text-xs mt-1">Overall average of all 9 metrics from all users</p>
+                        <p class="text-gray-300 text-xs mt-1">Overall average of all 8 metrics from all users</p>
                     </div>
                     <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg border border-yellow-500/30 shadow-inner">
                         <span class="text-4xl font-bold text-white" id="globalOverall">0.0</span>
@@ -69,7 +69,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCpEMtX1eP7YwZDH0qLBRGci6VkhBgcJVo",
             authDomain: "feedback-4ace7.firebaseapp.com",
@@ -83,20 +82,18 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Labels for the 9 rated questions
+        // Updated 8 Questions
         const questionLabels = {
             q1: "1. Crew Utilisation",
-            q2: "2. Adjustments & Obligations",
+            q2: "2. Adjustments & Requests",
             q3: "3. Approachability",
-            q4: "4. Requests Handling",
-            q5: "5. Seniority Management", 
-            q6: "6. Coordination With crew & TLC/PRC",
-            q7: "7. Emergencies Handling with less disturbances",
-            q8: "8. Maintaining LR & Handling",
-            q9: "9. Way of communicating"
+            q4: "4. Seniority Management", 
+            q5: "5. Coordination With crew & TLC/PRC",
+            q6: "6. Emergencies Handling with less disturbances",
+            q7: "7. Maintaining LR & Handling",
+            q8: "8. Way of communicating"
         };
 
-        // Querying the NEW collection "lr_feedbacks"
         const q = query(collection(db, "lr_feedbacks"), orderBy("date", "desc"));
 
         onSnapshot(q, (snapshot) => {
@@ -117,9 +114,9 @@
                 return;
             }
 
-            // Stats object for 9 questions
+            // Stats object for 8 rating questions
             let stats = {};
-            for(let i=1; i<=9; i++) {
+            for(let i=1; i<=8; i++) {
                 stats[`q${i}`] = { sum: 0, count: 0 };
             }
 
@@ -133,8 +130,8 @@
                 let personSum = 0;
                 let personCount = 0;
 
-                // Process Q1 to Q9 (Ratings)
-                for(let i=1; i<=9; i++) {
+                // Process Q1 to Q8 (Ratings only)
+                for(let i=1; i<=8; i++) {
                     if(data[`q${i}`] && typeof data[`q${i}`] === 'number') {
                         let val = data[`q${i}`];
                         stats[`q${i}`].sum += val;
@@ -148,10 +145,8 @@
                     }
                 }
 
-                // Average for this specific person
                 const personAvg = personCount > 0 ? (personSum / personCount).toFixed(1) : "0.0";
                 
-                // Color Logic based on average
                 let scoreColor = "text-blue-600 bg-blue-50 border-blue-200";
                 if(personAvg >= 4) scoreColor = "text-green-600 bg-green-50 border-green-200";
                 if(personAvg <= 2.5) scoreColor = "text-red-600 bg-red-50 border-red-200";
@@ -160,10 +155,15 @@
                         month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
                     }) : "Just now";
 
-                // Suggestions/Complaints Text (Q10)
-                let descText = data.q10 || "No suggestions/complaints provided.";
+                // SMART LOGIC: Q9 is the new descriptive text. 
+                // If old test data is present, Q10 might have the text.
+                let descText = "No suggestions/complaints provided.";
+                if (data.q9 && typeof data.q9 === 'string' && data.q9.trim() !== '') {
+                    descText = data.q9;
+                } else if (data.q10 && typeof data.q10 === 'string' && data.q10.trim() !== '') {
+                    descText = data.q10;
+                }
 
-                // Generate Card
                 const card = `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
                         
@@ -188,7 +188,7 @@
 
                             <div class="flex-1">
                                 <h4 class="text-xs font-bold text-blue-900 uppercase mb-2 flex items-center gap-2">
-                                    <i class="fa-solid fa-comment-dots text-blue-500"></i> Suggestions & Complaints (Q10)
+                                    <i class="fa-solid fa-comment-dots text-blue-500"></i> Suggestions & Complaints
                                 </h4>
                                 <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${descText}</div>
                             </div>
@@ -198,16 +198,14 @@
                 list.innerHTML += card;
             });
 
-            // Update Global Stats
             totalCountDisplay.innerText = snapshot.size;
 
-            // Generate Grid Items for Q1-Q9
-            for(let i=1; i<=9; i++) {
+            // Generate Grid Items for Q1-Q8
+            for(let i=1; i<=8; i++) {
                 let key = `q${i}`;
                 let avg = stats[key].count > 0 ? (stats[key].sum / stats[key].count).toFixed(1) : "0.0";
                 let percent = (avg / 5) * 100;
                 
-                // Bar color logic
                 let colorClass = avg >= 4 ? "bg-green-400" : (avg <= 2.5 ? "bg-red-400" : "bg-yellow-400");
                 
                 let html = `
@@ -224,13 +222,11 @@
                 avgGrid.innerHTML += html;
             }
 
-            // Global Overall Rating
             let gAvg = globalCount > 0 ? (globalSum / globalCount).toFixed(1) : "0.0";
             globalOverallDisplay.innerText = gAvg;
 
         });
 
-        // Delete function targets the new collection
         window.deleteFeedback = async (id) => {
             if(confirm("Delete this feedback permanently?")) {
                 try { await deleteDoc(doc(db, "lr_feedbacks", id)); } 
